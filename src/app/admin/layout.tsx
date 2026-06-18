@@ -28,6 +28,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               Families
             </Link>
+            <Link
+              href="/admin/bookings"
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
+              Bookings
+            </Link>
+            <Link
+              href="/admin/calendar"
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
+              Calendar
+            </Link>
+            <Link
+              href="/admin/settings"
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
+              Settings
+            </Link>
           </div>
           <SignOutButton className="text-sm text-gray-500 hover:text-gray-900" />
         </div>
