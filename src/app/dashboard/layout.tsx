@@ -10,6 +10,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link href="/dashboard" className="text-sm font-bold text-gray-900">
               Abrahome
             </Link>
+            <Link href="/dashboard/bookings" className="text-sm text-gray-600 hover:text-gray-900">
+              Bookings
+            </Link>
             <Link href="/dashboard/family" className="text-sm text-gray-600 hover:text-gray-900">
               My family
             </Link>

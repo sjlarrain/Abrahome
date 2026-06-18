@@ -21,6 +21,13 @@ export default async function DashboardPage() {
       </h1>
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Link
+          href="/dashboard/bookings"
+          className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200 hover:ring-blue-400"
+        >
+          <p className="font-semibold text-gray-900">Bookings</p>
+          <p className="mt-1 text-sm text-gray-500">View and request stays at the house</p>
+        </Link>
+        <Link
           href="/dashboard/family"
           className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200 hover:ring-blue-400"
         >
