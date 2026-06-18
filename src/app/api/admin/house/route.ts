@@ -28,7 +28,7 @@ export async function GET() {
     .select('*, house_settings(*), modules(*, rooms(*, beds(*)))')
     .order('created_at', { ascending: true })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   return NextResponse.json({ house: house ?? null })
 }
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     .from('houses')
     .select('id')
     .limit(1)
-    .single()
+    .maybeSingle()
 
   if (existing) {
     return NextResponse.json({ error: 'House already exists' }, { status: 409 })

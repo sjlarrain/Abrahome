@@ -52,6 +52,14 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // When email confirmation is enabled, Supabase does NOT error on a duplicate
+  // email (anti-enumeration). It returns an obfuscated user with no identities.
+  // Detect that and report the documented 400 instead of attempting a profile
+  // insert that would fail the auth.users foreign key.
+  if (authData.user.identities && authData.user.identities.length === 0) {
+    return NextResponse.json({ error: 'Email already registered' }, { status: 400 })
+  }
+
   const adminClient = createAdminClient()
   const { error: profileError } = await adminClient.from('user_profiles').insert({
     id: authData.user.id,

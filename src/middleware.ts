@@ -32,6 +32,12 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // API routes do their own auth (each handler checks the session/role). The
+  // middleware must NOT redirect them — a 307 to /login would break fetch()
+  // calls, including the unauthenticated /api/auth/* endpoints. We still return
+  // `response` so any refreshed session cookie propagates.
+  if (pathname.startsWith('/api')) return response
+
   const isPublic = PUBLIC_PATHS.has(pathname)
   const isAdmin = pathname.startsWith(ADMIN_PREFIX)
   const isDashboard = pathname.startsWith(DASHBOARD_PREFIX)
