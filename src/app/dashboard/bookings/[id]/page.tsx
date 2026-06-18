@@ -21,9 +21,9 @@ export default async function BookingDetailPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
-  // Use the user's client — RLS ensures they can only see their own family's bookings
+  // Use the user's client — RLS ensures they can only see their own family's
+  // bookings (the route is also gated to approved users by middleware).
   const { data: booking } = await supabase
     .from('booking_requests')
     .select(`

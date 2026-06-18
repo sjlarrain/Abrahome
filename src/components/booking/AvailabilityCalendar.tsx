@@ -1,12 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-
-type AvailabilityData = {
-  totalBeds: number
-  heldBeds: number
-  availableBeds: number
-}
+import { useState, useEffect } from 'react'
 
 type Props = {
   checkIn: string | null
@@ -16,8 +10,13 @@ type Props = {
   onSelectCheckOut: (date: string) => void
 }
 
+// Format using LOCAL date components (not toISOString, which is UTC and would
+// shift the date by the UTC offset for timezones east of UTC).
 function toYMD(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function addDays(ymd: string, n: number): string {
@@ -28,20 +27,6 @@ function addDays(ymd: string, n: number): string {
 
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate()
-}
-
-// Fetch availability for a single-night window starting on `date`
-async function fetchNight(date: string): Promise<AvailabilityData | null> {
-  try {
-    const out = addDays(date, 1)
-    const res = await fetch(
-      `/api/availability?checkInDate=${date}&checkOutDate=${out}`,
-    )
-    if (!res.ok) return null
-    return res.json()
-  } catch {
-    return null
-  }
 }
 
 type DayStatus = 'available' | 'limited' | 'full' | 'past' | 'loading'
@@ -60,41 +45,51 @@ export default function AvailabilityCalendar({
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
   const [dayStatus, setDayStatus] = useState<Record<string, DayStatus>>({})
 
-  const loadMonth = useCallback(
-    async (year: number, month: number) => {
-      const days = daysInMonth(year, month)
-      const dates: string[] = []
-      for (let d = 1; d <= days; d++) {
-        const ymd = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-        if (ymd >= minDate) dates.push(ymd)
+  // Fetch availability for the visible month in a single batched request.
+  // The async work lives inside the effect (with a cancellation guard) so
+  // setState only ever happens after `await`. Unknown days render as 'loading'
+  // via the `?? 'loading'` fallback until the fetch resolves.
+  useEffect(() => {
+    let cancelled = false
+
+    const total = daysInMonth(viewYear, viewMonth)
+    const dates: string[] = []
+    for (let d = 1; d <= total; d++) {
+      const ymd = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      if (ymd >= minDate) dates.push(ymd)
+    }
+    if (dates.length === 0) return
+
+    const start = dates[0]
+    const end = dates[dates.length - 1]
+
+    async function run() {
+      let data: { totalBeds: number; days: Record<string, number> } | null = null
+      try {
+        const res = await fetch(`/api/availability/range?startDate=${start}&endDate=${end}`)
+        if (res.ok) data = await res.json()
+      } catch {
+        data = null
       }
+      if (cancelled) return
 
-      // Mark as loading first
       setDayStatus((prev) => {
         const next = { ...prev }
-        dates.forEach((d) => { next[d] = 'loading' })
-        return next
-      })
-
-      const results = await Promise.all(dates.map((d) => fetchNight(d)))
-      setDayStatus((prev) => {
-        const next = { ...prev }
-        dates.forEach((date, i) => {
-          const data = results[i]
-          if (!data) { next[date] = 'past'; return }
-          if (data.availableBeds === 0) next[date] = 'full'
-          else if (data.availableBeds <= data.totalBeds * 0.25) next[date] = 'limited'
+        dates.forEach((date) => {
+          if (!data) { next[date] = 'available'; return }
+          const held = data.days[date] ?? 0
+          const available = Math.max(0, data.totalBeds - held)
+          if (available === 0) next[date] = 'full'
+          else if (available <= data.totalBeds * 0.25) next[date] = 'limited'
           else next[date] = 'available'
         })
         return next
       })
-    },
-    [minDate],
-  )
+    }
 
-  useEffect(() => {
-    loadMonth(viewYear, viewMonth)
-  }, [viewYear, viewMonth, loadMonth])
+    run()
+    return () => { cancelled = true }
+  }, [viewYear, viewMonth, minDate])
 
   function prevMonth() {
     if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11) }
